@@ -1,6 +1,4 @@
-package com.michaelsanchez.handlers;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
+package com.michaelsanchez.exceptions;
 
 public class JsonConversionException extends Exception {
     public JsonConversionException(Throwable cause) {

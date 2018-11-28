@@ -2,6 +2,8 @@ package com.michaelsanchez.handlers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.michaelsanchez.exceptions.JsonConversionException;
+import com.michaelsanchez.exceptions.ModelCreationException;
 import com.michaelsanchez.models.ImageModel;
 import com.michaelsanchez.models.ImageResultModel;
 import org.eclipse.jetty.server.Request;

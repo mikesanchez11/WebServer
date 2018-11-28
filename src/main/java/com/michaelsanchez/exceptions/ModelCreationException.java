@@ -1,6 +1,4 @@
-package com.michaelsanchez.handlers;
-
-import java.net.URISyntaxException;
+package com.michaelsanchez.exceptions;
 
 public class ModelCreationException extends Exception {
     public ModelCreationException(Throwable e) {

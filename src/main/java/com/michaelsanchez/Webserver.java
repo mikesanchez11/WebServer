@@ -37,10 +37,8 @@ public class Webserver {
         contextHandler.setClassLoader(Thread.currentThread().getContextClassLoader());
 
         ContextHandlerCollection contexts = new ContextHandlerCollection();
-        contexts.setHandlers(new Handler[] { contextHandler});
-
+        contexts.setHandlers(new Handler[]{contextHandler});
 
         return contexts;
     }
-
 }

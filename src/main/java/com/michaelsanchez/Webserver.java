@@ -1,5 +1,7 @@
 package com.michaelsanchez;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import com.michaelsanchez.handlers.ApiHandler;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -12,16 +14,19 @@ public class Webserver {
     public static void main(String[] args) throws Exception {
         Server server = new Server();
 
+        Injector injector = Guice.createInjector(new ApiHandlerModule());
+
+        ApiHandler apiHandler = injector.getInstance(ApiHandler.class);
+
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(DEFAULT_PORT);
         server.addConnector(connector);
-        server.setHandler(getHandler());
+        server.setHandler(getHandler(apiHandler));
 
         server.start();
     }
 
-    private static Handler getHandler() {
-        ApiHandler handler = new ApiHandler();
+    static Handler getHandler(ApiHandler handler) {
 
         ContextHandler contextHandler = new ContextHandler("/");
         contextHandler.setResourceBase(".");

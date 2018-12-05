@@ -3,16 +3,15 @@ package com.michaelsanchez.handlers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.inject.Inject;
+import com.michaelsanchez.FlickrClient;
 import com.michaelsanchez.exceptions.JsonConverstionException;
-import com.michaelsanchez.models.ImageModel;
-import com.michaelsanchez.models.ImageResultModel;
+import com.michaelsanchez.models.FlickrResponse;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.net.URI;
 
 public class ApiHandler extends AbstractHandler {
     private ObjectWriter mObjectWriter;
@@ -22,14 +21,18 @@ public class ApiHandler extends AbstractHandler {
         mObjectWriter = objectWriter;
     }
 
+    @Inject
+    private FlickrClient flickrClient;
+
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
-            ImageResultModel imageResultModel = new ImageResultModel();
-            imageResultModel.addImage(new ImageModel("id", "title", URI.create("yahoo.com")));
-            response.getWriter().println(getJsonConversion(imageResultModel));
+            //TODO Check for nulls, Respond with BADREQUEST if null
+            // Loging frameworks to use and why and where 
+            FlickrResponse flickrResponse = flickrClient.findImagesByKeyword(request.getParameter("q"));
+            response.getWriter().println(getJsonConversion(flickrResponse));
             response.setStatus(HttpServletResponse.SC_OK);
-        } catch (JsonConverstionException e) {
+        } catch (Throwable e) {
             response.getWriter().println(e.getLocalizedMessage());
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
@@ -37,9 +40,9 @@ public class ApiHandler extends AbstractHandler {
         }
     }
 
-    private String getJsonConversion(ImageResultModel imageResultModel) throws JsonConverstionException {
+    private String getJsonConversion(Object o) throws JsonConverstionException {
         try {
-            return mObjectWriter.writeValueAsString(imageResultModel);
+            return mObjectWriter.writeValueAsString(o);
         } catch (JsonProcessingException e) {
             throw new JsonConverstionException(e);
         }

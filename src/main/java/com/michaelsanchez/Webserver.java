@@ -14,9 +14,9 @@ public class Webserver {
     public static void main(String[] args) throws Exception {
         Server server = new Server();
 
-        Injector injector = Guice.createInjector(new ApiHandlerModule());
-
+        Injector injector = Guice.createInjector(new ApiHandlerModule(), new FlickrClientModule());
         ApiHandler apiHandler = injector.getInstance(ApiHandler.class);
+
 
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(DEFAULT_PORT);

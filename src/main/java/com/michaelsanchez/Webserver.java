@@ -7,9 +7,14 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.ContextHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Webserver {
     private static final int DEFAULT_PORT = 8080;
+
+    private static Logger LOGGER = LoggerFactory.getLogger(Webserver.class);
+
 
     public static void main(String[] args) throws Exception {
         Server server = new Server();

@@ -28,7 +28,7 @@ public class ApiHandler extends AbstractHandler {
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
             //TODO Check for nulls, Respond with BADREQUEST if null
-            // Loging frameworks to use and why and where 
+            // Loging frameworks to use and why and where
             FlickrResponse flickrResponse = flickrClient.findImagesByKeyword(request.getParameter("q"));
             response.getWriter().println(getJsonConversion(flickrResponse));
             response.setStatus(HttpServletResponse.SC_OK);

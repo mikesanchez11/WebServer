@@ -21,6 +21,7 @@ public class Webserver {
 
         Injector injector = Guice.createInjector(new ApiHandlerModule(), new FlickrClientModule());
         ApiHandler apiHandler = injector.getInstance(ApiHandler.class);
+        apiHandler.setInjector(injector);
 
 
         ServerConnector connector = new ServerConnector(server);

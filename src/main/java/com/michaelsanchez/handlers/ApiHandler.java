@@ -3,9 +3,10 @@ package com.michaelsanchez.handlers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.inject.Inject;
-import com.michaelsanchez.FlickrClient;
+import com.google.inject.Injector;
+import com.michaelsanchez.controllers.Controller;
 import com.michaelsanchez.exceptions.JsonConverstionException;
-import com.michaelsanchez.models.FlickrResponse;
+import com.michaelsanchez.utils.StringUtils;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
@@ -14,46 +15,63 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 public class ApiHandler extends AbstractHandler {
-    private ObjectWriter mObjectWriter;
+    private Injector injector;
+    private ObjectWriter objectWriter;
 
     @Inject
     public ApiHandler(ObjectWriter objectWriter) {
-        mObjectWriter = objectWriter;
+        this.objectWriter = objectWriter;
     }
 
-    @Inject
-    private FlickrClient flickrClient;
-
     @Override
-    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) {
+        String controllerBaseName = target.replaceFirst("/api/", "");
+
         try {
-            //TODO Check for nulls, Respond with BADREQUEST if null
-            // Loging frameworks to use and why and where
-            FlickrResponse flickrResponse = flickrClient.findImagesByKeyword(request.getParameter("q"));
-            response.getWriter().println(getJsonConversion(flickrResponse));
-            response.setStatus(HttpServletResponse.SC_OK);
-        } catch (Throwable e) {
-            response.getWriter().println(e.getLocalizedMessage());
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            String packageName = Controller.class.getPackage().getName();
+            String className = StringUtils.ucFirst(controllerBaseName + "Controller");
+            Class<?> controllerClass = Class.forName(packageName + "." + className);
+            Controller controller = (Controller) injector.getInstance(controllerClass);
+            Object o = controller.handleRequest(request);
+            handleResponse(response, o);
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
         } finally {
             baseRequest.setHandled(true);
         }
     }
 
+    public void setInjector(Injector injector) {
+        this.injector = injector;
+    }
+
+    private void handleResponse(HttpServletResponse response, Object o) throws IOException {
+        try {
+            //TODO Check for nulls, Respond with BADREQUEST if null
+            // Loging frameworks to use and why and where
+            response.getWriter().println(getJsonConversion(o));
+            response.setStatus(HttpServletResponse.SC_OK);
+        } catch (Throwable e) {
+            response.getWriter().println(e.getLocalizedMessage());
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private String getJsonConversion(Object o) throws JsonConverstionException {
         try {
-            return mObjectWriter.writeValueAsString(o);
+            return objectWriter.writeValueAsString(o);
         } catch (JsonProcessingException e) {
             throw new JsonConverstionException(e);
         }
     }
+
 }
 
 
 /**
-    Guice -> make a provider that is going to provide an object mapper to the api handler class
-    Can we get the Object writer instead ?
-
-    Is this an Uber thing or why? -> dependency injection when there is no dependency
-    How to compose Guice modules(Parent dependencies and shit like that)
+ * Guice -> make a provider that is going to provide an object mapper to the api handler class
+ * Can we get the Object writer instead ?
+ * <p>
+ * Is this an Uber thing or why? -> dependency injection when there is no dependency
+ * How to compose Guice modules(Parent dependencies and shit like that)
  */

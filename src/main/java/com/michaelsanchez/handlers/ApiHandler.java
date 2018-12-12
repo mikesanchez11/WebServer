@@ -30,28 +30,43 @@ public class ApiHandler extends AbstractHandler {
 
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) {
+        Controller controller;
 
         try {
             String fullnameWithPackage = getControllerFullyQualifiedClassName(target);
-            Controller controller = getController(fullnameWithPackage);
+            controller = getController(fullnameWithPackage);
+        } catch (Throwable e) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        } finally {
+            baseRequest.setHandled(true);
+        }
+
+        try {
             Object o = controller.handleRequest(request);
-            handleResponse(response, o);
+            writeResponse(response, o);
+            response.setStatus(HttpServletResponse.SC_OK);
         } catch (Throwable throwable) {
-            throwable.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
             baseRequest.setHandled(true);
         }
     }
 
     private Controller getController(String fullnameWithPackage) throws ClassNotFoundException {
+        if (fullnameWithPackage == null) {
+            throw new ClassNotFoundException();
+            // TODO: Log something
+        }
+
         Class<?> controllerClass = Class.forName(fullnameWithPackage);
         return (Controller) injector.getInstance(controllerClass);
     }
 
     /**
      * Based on the path in bthe URL we use a naming convention to determine the name of the controller class.
-     *  /api/flickr -> uppercaseFirst(flickr) + "Controller"
-     *  package name is dervived by hoping Controller.class isa in thew same package as all the other shit
+     * /api/flickr -> uppercaseFirst(flickr) + "Controller"
+     * package name is dervived by hoping Controller.class isa in thew same package as all the other shit
      *
      * @param target
      * @return
@@ -71,27 +86,24 @@ public class ApiHandler extends AbstractHandler {
                 if (annotation instanceof API) {
                     API apiAnnotation = (API) annotation;
                     classMap.put(apiAnnotation.value(), clazz);
-                    System.out.println("value: " + apiAnnotation.value());
+                    // TODO: LOG THIS
+                    break;
                 }
             }
         }
 
-        return classMap.get(target).getCanonicalName();
+        return classMap.containsKey(target) ? classMap.get(target).getCanonicalName() : null;
     }
 
     public void setInjector(Injector injector) {
         this.injector = injector;
     }
 
-    private void handleResponse(HttpServletResponse response, Object o) throws IOException {
+    private void writeResponse(HttpServletResponse response, Object o) throws IOException {
         try {
-            //TODO Check for nulls, Respond with BADREQUEST if null
-            // Loging frameworks to use and why and where
             response.getWriter().println(getJsonConversion(o));
-            response.setStatus(HttpServletResponse.SC_OK);
         } catch (Throwable e) {
             response.getWriter().println(e.getLocalizedMessage());
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -104,15 +116,3 @@ public class ApiHandler extends AbstractHandler {
     }
 
 }
-
-
-/**
- * Guice -> make a provider that is going to provide an object mapper to the api handler class
- * Can we get the Object writer instead ?
- * <p>
- * Is this an Uber thing or why? -> dependency injection when there is no dependency
- * How to compose Guice modules(Parent dependencies and shit like that)
- */
-
-// Accessing annotation
-// How do i get to these annotations

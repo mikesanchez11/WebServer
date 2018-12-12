@@ -9,8 +9,10 @@ import com.michaelsanchez.models.FlickrResponse;
 import javax.servlet.http.HttpServletRequest;
 
 @API("/api/flickr")
+@Deprecated
 public class FlickrController implements Controller {
 
+    public static final String QUERY = "q";
     private FlickrClient flickrClient;
 
     @Inject
@@ -20,6 +22,6 @@ public class FlickrController implements Controller {
 
     @Override
     public FlickrResponse handleRequest(HttpServletRequest request) throws FlickrClientException {
-        return flickrClient.findImagesByKeyword(request.getParameter("q"));
+        return flickrClient.findImagesByKeyword(request.getParameter(QUERY));
     }
 }

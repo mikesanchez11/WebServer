@@ -21,18 +21,21 @@ import java.util.List;
 public class FlickrClient {
 
     private static final String API_KEY = "3e7cc266ae2b0e0d78e279ce8e361736";
-    private static final String CALLBACK ="1";
-    private static final String FORMAT = "json";
-    private static final String PHOTO_SEARCH_METHOD = "flickr.photos.search";
+    private static final String API_KEY_KEY = "api_key";
     private static final String BASE_URL = "https://api.flickr.com/services/rest/?";
+    private static final String CALLBACK = "1";
+    private static final String FORMAT = "json";
+    private static final String FORMAT_KEY = "format";
+    private static final String JSONCALLBACK_KEY = "jsoncallback";
+    private static final String PHOTO_SEARCH_METHOD = "flickr.photos.search";
 
     private final ObjectMapper mapper;
     private CloseableHttpClient httpClient;
 
     @Inject
     public FlickrClient(CloseableHttpClient httpClient, ObjectMapper mapper) {
-         this.httpClient = httpClient;
-         this.mapper = mapper;
+        this.httpClient = httpClient;
+        this.mapper = mapper;
     }
 
 
@@ -44,42 +47,49 @@ public class FlickrClient {
         String params = makingUrlEncoded(namedValuePair);
 
         HttpGet httpGet = new HttpGet(BASE_URL + params);
+        CloseableHttpResponse response = null;
+
         try {
-            CloseableHttpResponse response = httpClient.execute(httpGet);
+            response = httpClient.execute(httpGet);
             HttpEntity entity = response.getEntity();
 
             String jsonResponse = EntityUtils.toString(entity);
 
             String updatedResponse = jsonResponse.replaceFirst("1\\(", "");
-            updatedResponse = updatedResponse.substring(0, updatedResponse.length()-1);
+            updatedResponse = updatedResponse.substring(0, updatedResponse.length() - 1);
 
             EntityUtils.consume(entity);
-            response.close();
 
             return mapper.readValue(updatedResponse, FlickrResponse.class);
         } catch (IOException e) {
             throw new FlickrClientException(e);
+        } finally {
+            if (response != null) {
+                try {
+                    response.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
     }
 
     private String makingUrlEncoded(List<NameValuePair> namedValuePair) {
-        String param = "";
-        if (!namedValuePair.isEmpty()) {
-            try {
-                param = EntityUtils.toString(new UrlEncodedFormEntity(namedValuePair, Charset.forName("UTF-8")));
-            } catch (IOException e) {
-                // THROW A BETTER EXCEPTION
-                throw new RuntimeException("get request param error");
-            }
+        if (namedValuePair.isEmpty()) return "";
+
+        try {
+            return EntityUtils.toString(new UrlEncodedFormEntity(namedValuePair, Charset.forName("UTF-8")));
+        } catch (IOException e) {
+            // THROW A BETTER EXCEPTION
+            throw new RuntimeException("get request param error");
         }
-        return param;
     }
 
     private List<NameValuePair> getNamedValuePair() {
         List<NameValuePair> nvps = new ArrayList<>();
-        nvps.add(new BasicNameValuePair("api_key", API_KEY));
-        nvps.add(new BasicNameValuePair("format", FORMAT));
-        nvps.add(new BasicNameValuePair("jsoncallback", CALLBACK));
+        nvps.add(new BasicNameValuePair(API_KEY_KEY, API_KEY));
+        nvps.add(new BasicNameValuePair(FORMAT_KEY, FORMAT));
+        nvps.add(new BasicNameValuePair(JSONCALLBACK_KEY, CALLBACK));
         return nvps;
     }
 }

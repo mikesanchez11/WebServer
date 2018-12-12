@@ -2,11 +2,13 @@ package com.michaelsanchez.controllers;
 
 import com.google.inject.Inject;
 import com.michaelsanchez.FlickrClient;
+import com.michaelsanchez.anotations.API;
 import com.michaelsanchez.exceptions.FlickrClientException;
 import com.michaelsanchez.models.FlickrResponse;
 
 import javax.servlet.http.HttpServletRequest;
 
+@API("/api/flickr")
 public class FlickrController implements Controller {
 
     private FlickrClient flickrClient;

@@ -10,12 +10,14 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 public class Webserver {
     private static final int DEFAULT_PORT = 8080;
 
     private static Logger LOGGER = LoggerFactory.getLogger(Webserver.class);
-
+    private static Marker FATAL = MarkerFactory.getMarker("FATAL");
 
     public static void main(String[] args) throws ServerNotStartingException {
         Injector injector = Guice.createInjector(new ApiHandlerModule(), new FlickrClientModule());
@@ -30,8 +32,11 @@ public class Webserver {
         server.setHandler(getHandler(apiHandler));
 
         try {
+            LOGGER.info("Starting on {}", DEFAULT_PORT);
             server.start();
-        } catch (Exception e) {
+            LOGGER.info("Server Started");
+        } catch (Throwable e) {
+            LOGGER.error(FATAL,"Error Starting Server", e);
             throw new ServerNotStartingException(e);
         }
     }

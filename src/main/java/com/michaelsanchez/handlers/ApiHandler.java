@@ -10,6 +10,8 @@ import com.michaelsanchez.exceptions.JsonConverstionException;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.reflections.Reflections;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -23,6 +25,8 @@ public class ApiHandler extends AbstractHandler {
     private Injector injector;
     private ObjectWriter objectWriter;
 
+    private static Logger LOGGER = LoggerFactory.getLogger(ApiHandler.class);
+
     @Inject
     public ApiHandler(ObjectWriter objectWriter) {
         this.objectWriter = objectWriter;
@@ -32,10 +36,13 @@ public class ApiHandler extends AbstractHandler {
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) {
         Controller controller;
 
+        LOGGER.debug("About to handle {}", target);
+
         try {
             String fullnameWithPackage = getControllerFullyQualifiedClassName(target);
             controller = getController(fullnameWithPackage);
         } catch (Throwable e) {
+            LOGGER.warn("Controller was not found for {}", target);
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
         } finally {
@@ -47,6 +54,8 @@ public class ApiHandler extends AbstractHandler {
             writeResponse(response, o);
             response.setStatus(HttpServletResponse.SC_OK);
         } catch (Throwable throwable) {
+            LOGGER.error("Error handling {}", target, throwable);
+
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
             baseRequest.setHandled(true);
@@ -56,9 +65,9 @@ public class ApiHandler extends AbstractHandler {
     private Controller getController(String fullnameWithPackage) throws ClassNotFoundException {
         if (fullnameWithPackage == null) {
             throw new ClassNotFoundException();
-            // TODO: Log something
         }
 
+        LOGGER.trace("Grabbing controller for {}", fullnameWithPackage);
         Class<?> controllerClass = Class.forName(fullnameWithPackage);
         return (Controller) injector.getInstance(controllerClass);
     }
@@ -73,26 +82,40 @@ public class ApiHandler extends AbstractHandler {
      * @throws ClassNotFoundException
      */
     private String getControllerFullyQualifiedClassName(String target) {
+        LOGGER.debug("Grabbing full class name for {}", target);
+
         Map<String, Class> classMap = new HashMap<>();
 
         Reflections reflections = new Reflections("com.michaelsanchez.controllers");
         Set<Class<? extends Controller>> allClasses =
                 reflections.getSubTypesOf(Controller.class);
 
+        LOGGER.trace("Scanning {} classes", allClasses.size());
+
         for (Class clazz : allClasses) {
             Annotation[] annotations = clazz.getAnnotations();
+
+            LOGGER.trace("Got {} annotations from class {}", annotations.length, clazz);
 
             for (Annotation annotation : annotations) {
                 if (annotation instanceof API) {
                     API apiAnnotation = (API) annotation;
                     classMap.put(apiAnnotation.value(), clazz);
-                    // TODO: LOG THIS
+                    LOGGER.trace("Found {} for {}. Skipping the rest", annotation, clazz);
                     break;
                 }
             }
         }
 
-        return classMap.containsKey(target) ? classMap.get(target).getCanonicalName() : null;
+        String fullClassName = classMap.containsKey(target) ? classMap.get(target).getCanonicalName() : null;
+
+        if (fullClassName == null) {
+            LOGGER.warn("Full name was null for {}", target);
+        } else {
+            LOGGER.debug("Using {} for {}", fullClassName, target);
+        }
+
+        return fullClassName;
     }
 
     public void setInjector(Injector injector) {

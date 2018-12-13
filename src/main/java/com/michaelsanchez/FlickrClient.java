@@ -3,6 +3,7 @@ package com.michaelsanchez;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.michaelsanchez.exceptions.FlickrClientException;
+import com.michaelsanchez.handlers.ApiHandler;
 import com.michaelsanchez.models.FlickrResponse;
 import org.apache.http.HttpEntity;
 import org.apache.http.NameValuePair;
@@ -12,6 +13,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -32,6 +35,8 @@ public class FlickrClient {
     private final ObjectMapper mapper;
     private CloseableHttpClient httpClient;
 
+    private static Logger LOGGER = LoggerFactory.getLogger(FlickrClient.class);
+
     @Inject
     public FlickrClient(CloseableHttpClient httpClient, ObjectMapper mapper) {
         this.httpClient = httpClient;
@@ -40,13 +45,18 @@ public class FlickrClient {
 
 
     public FlickrResponse findImagesByKeyword(String keyword) throws FlickrClientException {
+        LOGGER.trace("Searching for {}", keyword);
+
         List<NameValuePair> namedValuePair = getNamedValuePair();
         namedValuePair.add(new BasicNameValuePair("method", PHOTO_SEARCH_METHOD));
         namedValuePair.add(new BasicNameValuePair("text", keyword));
 
         String params = makingUrlEncoded(namedValuePair);
+        String uri = BASE_URL + params;
 
-        HttpGet httpGet = new HttpGet(BASE_URL + params);
+        LOGGER.debug("Hitting flickr {}", uri);
+
+        HttpGet httpGet = new HttpGet(uri);
         CloseableHttpResponse response = null;
 
         try {
@@ -54,6 +64,7 @@ public class FlickrClient {
             HttpEntity entity = response.getEntity();
 
             String jsonResponse = EntityUtils.toString(entity);
+            LOGGER.debug("flickr response: {}", jsonResponse);
 
             String updatedResponse = jsonResponse.replaceFirst("1\\(", "");
             updatedResponse = updatedResponse.substring(0, updatedResponse.length() - 1);
@@ -62,6 +73,7 @@ public class FlickrClient {
 
             return mapper.readValue(updatedResponse, FlickrResponse.class);
         } catch (IOException e) {
+            LOGGER.error("Error searching for {}", keyword, e);
             throw new FlickrClientException(e);
         } finally {
             if (response != null) {
@@ -80,7 +92,7 @@ public class FlickrClient {
         try {
             return EntityUtils.toString(new UrlEncodedFormEntity(namedValuePair, Charset.forName("UTF-8")));
         } catch (IOException e) {
-            // THROW A BETTER EXCEPTION
+            LOGGER.error("Couldn't URL encode {}", namedValuePair, e);
             throw new RuntimeException("get request param error");
         }
     }

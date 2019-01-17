@@ -20,6 +20,10 @@ public class Webserver {
     private static Marker FATAL = MarkerFactory.getMarker("FATAL");
 
     public static void main(String[] args) throws ServerNotStartingException {
+        new Webserver().startServer();
+    }
+
+    private void startServer() throws ServerNotStartingException {
         Injector injector = Guice.createInjector(new ApiHandlerModule(), new FlickrClientModule());
 
         ApiHandler apiHandler = injector.getInstance(ApiHandler.class);
@@ -41,7 +45,7 @@ public class Webserver {
         }
     }
 
-    static Handler getHandler(ApiHandler handler) {
+    private Handler getHandler(ApiHandler handler) {
         ContextHandler contextHandler = new ContextHandler("/");
         contextHandler.setResourceBase(".");
         contextHandler.setHandler(handler);

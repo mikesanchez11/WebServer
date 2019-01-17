@@ -47,6 +47,9 @@ public class FlickrClient {
     public FlickrResponse findImagesByKeyword(String keyword) throws FlickrClientException {
         LOGGER.trace("Searching for {}", keyword);
 
+        // What if keyword was empty
+        //make your own method
+
         List<NameValuePair> namedValuePair = getNamedValuePair();
         namedValuePair.add(new BasicNameValuePair("method", PHOTO_SEARCH_METHOD));
         namedValuePair.add(new BasicNameValuePair("text", keyword));
@@ -57,17 +60,15 @@ public class FlickrClient {
         LOGGER.debug("Hitting flickr {}", uri);
 
         HttpGet httpGet = new HttpGet(uri);
-        CloseableHttpResponse response = null;
 
-        try {
-            response = httpClient.execute(httpGet);
+        try (CloseableHttpResponse response = httpClient.execute(httpGet)){
             HttpEntity entity = response.getEntity();
 
             String jsonResponse = EntityUtils.toString(entity);
             LOGGER.debug("flickr response: {}", jsonResponse);
 
-            String updatedResponse = jsonResponse.replaceFirst("1\\(", "");
-            updatedResponse = updatedResponse.substring(0, updatedResponse.length() - 1);
+            String updatedResponse = jsonResponse.replaceFirst("1\\(", ""); // this shit can go wrong
+            updatedResponse = updatedResponse.substring(0, updatedResponse.length() - 1); // goes along should be a method
 
             EntityUtils.consume(entity);
 
@@ -75,14 +76,6 @@ public class FlickrClient {
         } catch (IOException e) {
             LOGGER.error("Error searching for {}", keyword, e);
             throw new FlickrClientException(e);
-        } finally {
-            if (response != null) {
-                try {
-                    response.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
         }
     }
 

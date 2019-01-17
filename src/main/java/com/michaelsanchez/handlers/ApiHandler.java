@@ -44,9 +44,8 @@ public class ApiHandler extends AbstractHandler {
         } catch (Throwable e) {
             LOGGER.warn("Controller was not found for {}", target);
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        } finally {
             baseRequest.setHandled(true);
+            return;
         }
 
         try {

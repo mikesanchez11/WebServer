@@ -1,20 +1,14 @@
 package com.michaelsanchez;
 
 
-import com.michaelsanchez.handlers.ApiHandler;
-import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.server.handler.ContextHandler;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
-
-import static com.michaelsanchez.Webserver.getHandler;
-import static org.junit.Assert.assertEquals;
+import java.util.HashMap;
+import java.util.Map;
 
 public class WebserverTest {
     private static final int DEFAULT_PORT = 8080;
@@ -41,6 +35,7 @@ public class WebserverTest {
             e.printStackTrace();
         }
     }
+
 
 //    @Test
 //    public void whenConnectionHasValidHandler_shouldThrowOKResponseCode() throws Exception {

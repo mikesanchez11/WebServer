@@ -19,22 +19,34 @@ public class Webserver {
     private static Logger LOGGER = LoggerFactory.getLogger(Webserver.class);
     private static Marker FATAL = MarkerFactory.getMarker("FATAL");
 
-    public static void main(String[] args) throws ServerNotStartingException {
-        new Webserver().startServer();
+    Injector injector;
+    private Server server;
+
+    public Webserver(Injector injector) {
+        this.injector = injector;
     }
 
-    private void startServer() throws ServerNotStartingException {
+    public static void main(String[] args) throws ServerNotStartingException {
         Injector injector = Guice.createInjector(new ApiHandlerModule(), new FlickrClientModule());
+
+        Webserver webserver = new Webserver(injector);
+        Server serverForPort = webserver.createServerForPort(DEFAULT_PORT);
+        webserver.setServer(serverForPort);
 
         ApiHandler apiHandler = injector.getInstance(ApiHandler.class);
         apiHandler.setInjector(injector);
 
-        Server server = injector.getInstance(Server.class);
-        ServerConnector connector = new ServerConnector(server);
-        connector.setPort(DEFAULT_PORT);
-        server.addConnector(connector);
-        server.setHandler(getHandler(apiHandler));
+        Handler handler = webserver.getHandler(apiHandler);
+        webserver.server.setHandler(handler);
 
+        webserver.startServer(webserver.server);
+    }
+
+    void setServer(Server server) {
+        this.server = server;
+    }
+
+    void startServer(Server server) throws ServerNotStartingException {
         try {
             LOGGER.info("Starting on {}", DEFAULT_PORT);
             server.start();
@@ -45,10 +57,22 @@ public class Webserver {
         }
     }
 
-    private Handler getHandler(ApiHandler handler) {
+    Handler getHandler(ApiHandler handler) {
         ContextHandler contextHandler = new ContextHandler("/");
         contextHandler.setResourceBase(".");
         contextHandler.setHandler(handler);
         return contextHandler;
+    }
+
+    Server createServerForPort(int port) {
+        Server server = injector.getInstance(Server.class);
+        ServerConnector connector = new ServerConnector(server);
+        connector.setPort(port);
+        server.addConnector(connector);
+        return server;
+    }
+
+    public boolean isStarted() {
+        return server.isStarted();
     }
 }

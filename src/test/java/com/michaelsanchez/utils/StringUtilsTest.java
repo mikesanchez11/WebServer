@@ -28,7 +28,9 @@ public class StringUtilsTest {
         }
 
         assertTrue(StringUtils.isEmpty("\t"));
-        assertTrue(StringUtils.isEmpty("\n"));
+        assertTrue("New line error", StringUtils.isEmpty("\n"));
+        assertTrue("Return error", StringUtils.isEmpty("\r"));
+
     }
 
     @Test

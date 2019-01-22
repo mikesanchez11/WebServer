@@ -1,59 +1,54 @@
 package com.michaelsanchez;
 
-
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.michaelsanchez.exceptions.ServerNotStartingException;
+import com.michaelsanchez.handlers.ApiHandler;
+import org.eclipse.jetty.server.AbstractNetworkConnector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
-import org.junit.After;
-import org.junit.Before;
+import org.eclipse.jetty.server.handler.ContextHandler;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class WebserverTest {
-    private static final int DEFAULT_PORT = 8080;
+    private static Webserver webserver;
 
-    private Server server;
-
-    @Before
-    public void StartJettyServer() {
-        server = new Server();
-        ServerConnector connector = new ServerConnector(server);
-        connector.setPort(DEFAULT_PORT);
-        server.addConnector(connector);
+    @BeforeClass
+    public static void instantiateWebServer() {
+        Injector injector = Guice.createInjector(new ApiHandlerModule(), new FlickrClientModule());
+        webserver = new Webserver(injector);
     }
 
-    @After
-    public void stopJetty()
-    {
-        try
-        {
-            server.stop();
-        }
-        catch (Exception e)
-        {
+    @Test
+    public void testGetHandler() {
+        ApiHandler handler = new ApiHandler(null);
+        ContextHandler webserverHandler = (ContextHandler) webserver.getHandler(handler);
+        assertEquals(handler, webserverHandler.getHandler());
+    }
+
+    @Test
+    public void testGetServerForPort() {
+        int port = 9090;
+        Server server = webserver.createServerForPort(port);
+
+        AbstractNetworkConnector connector = (AbstractNetworkConnector) server.getConnectors()[0];
+        assertEquals(port, connector.getPort());
+    }
+
+    @Test
+    public void testStartingServer() {
+        int port = 9090;
+        Server server = webserver.createServerForPort(port);
+        webserver.setServer(server);
+
+        try {
+            webserver.startServer(server);
+            assertTrue(webserver.isStarted());
+        } catch (ServerNotStartingException e) {
             e.printStackTrace();
         }
     }
-
-
-//    @Test
-//    public void whenConnectionHasValidHandler_shouldThrowOKResponseCode() throws Exception {
-//        server.setHandler(getHandler());
-//
-//        server.start();
-//        HttpURLConnection http = (HttpURLConnection)new URL("http://localhost:8080/").openConnection();
-//        http.connect();
-//        assertEquals(HttpURLConnection.HTTP_OK, http.getResponseCode());
-//    }
-//
-//    @Test
-//    public void whenConnectionHasInvalidHandler_shouldThrow() throws Exception {
-//        server.setHandler(new ContextHandler("/Invalid"));
-//
-//        server.start();
-//        HttpURLConnection http = (HttpURLConnection)new URL("http://localhost:8080/").openConnection();
-//        http.connect();
-//        assertEquals(HttpURLConnection.HTTP_NOT_FOUND, http.getResponseCode());
-//    }
 }

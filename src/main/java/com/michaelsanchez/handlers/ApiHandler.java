@@ -39,14 +39,16 @@ public class ApiHandler extends AbstractHandler {
         LOGGER.debug("About to handle {}", target);
 
         try {
-            String fullnameWithPackage = getControllerFullyQualifiedClassName(target);
-            controller = getController(fullnameWithPackage);
+            controller = getController(target);
         } catch (Throwable e) {
             LOGGER.warn("Controller was not found for {}", target);
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            baseRequest.setHandled(true);
+            baseRequest.setHandled(true); // fake
             return;
         }
+
+        // WE grabbed the controller above
+        // We used the controller below
 
         try {
             Object o = controller.handleRequest(request);
@@ -61,7 +63,14 @@ public class ApiHandler extends AbstractHandler {
         }
     }
 
-    private Controller getController(String fullnameWithPackage) throws ClassNotFoundException {
+    private Controller getController(String target) throws ClassNotFoundException {
+        Controller controller;
+        String fullnameWithPackage = getControllerFullyQualifiedClassName(target);
+        controller = getInstanceOfController(fullnameWithPackage);
+        return controller;
+    }
+
+    private Controller getInstanceOfController(String fullnameWithPackage) throws ClassNotFoundException {
         if (fullnameWithPackage == null) {
             throw new ClassNotFoundException();
         }
@@ -83,38 +92,18 @@ public class ApiHandler extends AbstractHandler {
     private String getControllerFullyQualifiedClassName(String target) {
         LOGGER.debug("Grabbing full class name for {}", target);
 
-        Map<String, Class> classMap = new HashMap<>();
+        ControllerScanner controllerScanner = new ControllerScanner("com.michaelsanchez.controllers");
+        controllerScanner.scan();
+        Class controllerClass = controllerScanner.getControllerClass(target);
 
-        Reflections reflections = new Reflections("com.michaelsanchez.controllers");
-        Set<Class<? extends Controller>> allClasses =
-                reflections.getSubTypesOf(Controller.class);
-
-        LOGGER.trace("Scanning {} classes", allClasses.size());
-
-        for (Class clazz : allClasses) {
-            Annotation[] annotations = clazz.getAnnotations();
-
-            LOGGER.trace("Got {} annotations from class {}", annotations.length, clazz);
-
-            for (Annotation annotation : annotations) {
-                if (annotation instanceof API) {
-                    API apiAnnotation = (API) annotation;
-                    classMap.put(apiAnnotation.value(), clazz);
-                    LOGGER.trace("Found {} for {}. Skipping the rest", annotation, clazz);
-                    break;
-                }
-            }
-        }
-
-        String fullClassName = classMap.containsKey(target) ? classMap.get(target).getCanonicalName() : null;
-
-        if (fullClassName == null) {
-            LOGGER.warn("Full name was null for {}", target);
-        } else {
+        if (controllerClass != null) {
+            String fullClassName = controllerClass.getCanonicalName();
             LOGGER.debug("Using {} for {}", fullClassName, target);
+            return fullClassName ;
+        } else {
+            LOGGER.warn("Full name was null for {}", target);
+            return null;
         }
-
-        return fullClassName;
     }
 
     public void setInjector(Injector injector) {

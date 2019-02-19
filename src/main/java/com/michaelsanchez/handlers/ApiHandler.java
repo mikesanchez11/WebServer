@@ -4,46 +4,45 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
-import com.michaelsanchez.anotations.API;
 import com.michaelsanchez.controllers.Controller;
 import com.michaelsanchez.exceptions.JsonConverstionException;
+import com.michaelsanchez.utils.HttpWrapper;
+import com.michaelsanchez.utils.PrintWriterWrapper;
+import org.eclipse.jetty.server.HttpWriter;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.io.PrintWriter;
 
 public class ApiHandler extends AbstractHandler {
     private Injector injector;
     private ObjectWriter objectWriter;
+    private String packageName;
 
     private static Logger LOGGER = LoggerFactory.getLogger(ApiHandler.class);
 
     @Inject
-    public ApiHandler(ObjectWriter objectWriter) {
+    public ApiHandler(ObjectWriter objectWriter, String packageName) {
         this.objectWriter = objectWriter;
+        this.packageName = packageName;
     }
 
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) {
         Controller controller;
-
+        HttpWrapper httpWrapper = new HttpWrapper(baseRequest, response);
         LOGGER.debug("About to handle {}", target);
 
         try {
             controller = getController(target);
         } catch (Throwable e) {
             LOGGER.warn("Controller was not found for {}", target);
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            baseRequest.setHandled(true); // fake
+            httpWrapper.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
 
@@ -52,25 +51,18 @@ public class ApiHandler extends AbstractHandler {
 
         try {
             Object o = controller.handleRequest(request);
-            writeResponse(response, o);
-            response.setStatus(HttpServletResponse.SC_OK);
+            writeResponse(new PrintWriterWrapper(response.getWriter()), o);
+            httpWrapper.setStatus(HttpServletResponse.SC_OK);
         } catch (Throwable throwable) {
             LOGGER.error("Error handling {}", target, throwable);
 
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        } finally {
-            baseRequest.setHandled(true);
+            httpWrapper.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 
-    private Controller getController(String target) throws ClassNotFoundException {
-        Controller controller;
+    Controller getController(String target) throws ClassNotFoundException {
         String fullnameWithPackage = getControllerFullyQualifiedClassName(target);
-        controller = getInstanceOfController(fullnameWithPackage);
-        return controller;
-    }
 
-    private Controller getInstanceOfController(String fullnameWithPackage) throws ClassNotFoundException {
         if (fullnameWithPackage == null) {
             throw new ClassNotFoundException();
         }
@@ -89,10 +81,10 @@ public class ApiHandler extends AbstractHandler {
      * @return
      * @throws ClassNotFoundException
      */
-    private String getControllerFullyQualifiedClassName(String target) {
+    String getControllerFullyQualifiedClassName(String target) {
         LOGGER.debug("Grabbing full class name for {}", target);
 
-        ControllerScanner controllerScanner = new ControllerScanner("com.michaelsanchez.controllers");
+        ControllerScanner controllerScanner = new ControllerScanner(packageName);
         controllerScanner.scan();
         Class controllerClass = controllerScanner.getControllerClass(target);
 
@@ -110,15 +102,15 @@ public class ApiHandler extends AbstractHandler {
         this.injector = injector;
     }
 
-    private void writeResponse(HttpServletResponse response, Object o) throws IOException {
+    void writeResponse(PrintWriterWrapper writerWrapper, Object o) {
         try {
-            response.getWriter().println(getJsonConversion(o));
+            writerWrapper.println(getJsonConversion(o));
         } catch (Throwable e) {
-            response.getWriter().println(e.getLocalizedMessage());
+            writerWrapper.println(e.getLocalizedMessage());
         }
     }
 
-    private String getJsonConversion(Object o) throws JsonConverstionException {
+    String getJsonConversion(Object o) throws JsonConverstionException {
         try {
             return objectWriter.writeValueAsString(o);
         } catch (JsonProcessingException e) {
@@ -126,4 +118,11 @@ public class ApiHandler extends AbstractHandler {
         }
     }
 
+    public Injector getInjector() {
+        return injector;
+    }
+
+    public void setPackageName(String name) {
+        this.packageName = name;
+    }
 }

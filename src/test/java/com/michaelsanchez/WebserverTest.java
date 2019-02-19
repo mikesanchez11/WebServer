@@ -24,7 +24,7 @@ public class WebserverTest {
 
     @Test
     public void testGetHandler() {
-        ApiHandler handler = new ApiHandler(null);
+        ApiHandler handler = new ApiHandler(null, "com.michaelsanchez.controllers");
         ContextHandler webserverHandler = (ContextHandler) webserver.getHandler(handler);
         assertEquals(handler, webserverHandler.getHandler());
     }
